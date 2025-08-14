@@ -1,19 +1,10 @@
-import os
 import asyncio
 import aiohttp
-import aiofiles
 from bs4 import BeautifulSoup
-import re
+from langchain.schema import Document
 
-def get_filename_from_url(url):
-    """Generates a clean filename from a URL."""
-    if not url:
-        return None
-    sanitized_part = re.sub(r'[^a-zA-Z0-9_\-]', '', url.split('/')[-1])
-    return f"{sanitized_part}.txt" if sanitized_part else None
-
-async def fetch_and_save(session, url, output_dir):
-    """Fetches a single URL, parses it, and saves the content."""
+async def fetch_and_create_document(session, url):
+    """Fetches a single URL, parses it, and creates a Document."""
     try:
         async with session.get(url, timeout=10) as response:
             response.raise_for_status()
@@ -27,7 +18,6 @@ async def fetch_and_save(session, url, output_dir):
             else:
                 text = soup.get_text(separator=' ', strip=True)
 
-            # Clean the text
             header_marker = "Главная / Портфолио /"
             if header_marker in text:
                 text = text.split(header_marker, 1)[1]
@@ -38,41 +28,37 @@ async def fetch_and_save(session, url, output_dir):
 
             text = text.strip()
 
-            filename = get_filename_from_url(url)
-            if filename:
-                filepath = os.path.join(output_dir, filename)
-                async with aiofiles.open(filepath, 'w', encoding='utf-8') as out_file:
-                    await out_file.write(f"Source: {url}\n\n")
-                    await out_file.write(text)
-                print(f"Successfully scraped and saved {url} to {filepath}")
+            if text:
+                print(f"Successfully scraped {url}")
+                return Document(page_content=text, metadata={"source": url})
             else:
-                print(f"Could not generate a valid filename for URL: {url}")
+                print(f"No content scraped from {url}")
+                return None
 
     except aiohttp.ClientError as e:
         print(f"Error fetching {url}: {e}")
+        return None
     except Exception as e:
         print(f"An error occurred while processing {url}: {e}")
+        return None
 
-async def main():
+async def scrape_links():
     """
     Main function to read URLs and run scraping tasks concurrently.
     """
     links_file = 'links.txt'
-    output_dir = 'data'
-
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
     try:
         with open(links_file, 'r', encoding='utf-8') as f:
             urls = [line.strip() for line in f if line.strip()]
     except FileNotFoundError:
         print(f"Error: {links_file} not found.")
-        return
+        return []
 
     async with aiohttp.ClientSession() as session:
-        tasks = [fetch_and_save(session, url, output_dir) for url in urls]
-        await asyncio.gather(*tasks)
+        tasks = [fetch_and_create_document(session, url) for url in urls]
+        documents = await asyncio.gather(*tasks)
+        return [doc for doc in documents if doc]
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    documents = asyncio.run(scrape_links())
+    print(f"Scraped {len(documents)} documents.")
