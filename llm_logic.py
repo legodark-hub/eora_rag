@@ -1,3 +1,4 @@
+import logging
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.prompts import PromptTemplate
@@ -12,26 +13,28 @@ import config
 
 load_dotenv()
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 CHROMA_PATH = "chromadb"
 MODEL_NAME = "intfloat/multilingual-e5-large"
 EMBEDDINGS = HuggingFaceEmbeddings(model_name=MODEL_NAME)
 
-print("Initializing LLM...")
+logging.info("Initializing LLM...")
 LLM = ChatOpenAI(
     base_url=config.LLM_BASE_URL,
     api_key=config.LLM_API_KEY,
     model=config.LLM_NAME,
     temperature=0.7,
 )
-print("LLM initialized.")
+logging.info("LLM initialized.")
 
-print("Initializing retriever...")
+logging.info("Initializing retriever...")
 VECTOR_STORE = Chroma(
     persist_directory=CHROMA_PATH,
     embedding_function=EMBEDDINGS
 )
 RETRIEVER = VECTOR_STORE.as_retriever(search_kwargs={"k": 4})
-print("Retriever initialized.")
+logging.info("Retriever initialized.")
 
 
 class GraphState(TypedDict):
@@ -59,7 +62,7 @@ async def retrieve(state):
     Returns:
         state (dict): New key added to state, documents, that contains retrieved documents
     """
-    print("---RETRIEVE---")
+    logging.info("---RETRIEVE---")
     question = state["question"]
     documents = await RETRIEVER.ainvoke(question)
     sources = [doc.metadata['source'] for doc in documents]
@@ -75,7 +78,7 @@ async def generate(state):
     Returns:
         state (dict): New key added to state, generation, that contains LLM generation
     """
-    print("---GENERATE---")
+    logging.info("---GENERATE---")
     question = state["question"]
     documents = state["documents"]
     sources = state["sources"]
@@ -123,7 +126,7 @@ async def get_answer(query):
     """
     Gets an answer to a query using the RAG workflow.
     """
-    print(f"Executing query: {query}")
+    logging.info(f"Executing query: {query}")
     app = get_rag_workflow()
     response = await app.ainvoke({"question": query})
     return {

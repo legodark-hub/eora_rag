@@ -1,10 +1,13 @@
 import asyncio
 import shutil
 import os
+import logging
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from scraper import scrape_links
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 CHROMA_PATH = "chromadb"
 MODEL_NAME = "intfloat/multilingual-e5-large"
@@ -15,36 +18,36 @@ def create_vector_store(documents):
     Creates a Chroma vector store from a list of documents.
     """
     if os.path.exists(CHROMA_PATH):
-        print(f"Deleting old database at {CHROMA_PATH}")
+        logging.info(f"Deleting old database at {CHROMA_PATH}")
         shutil.rmtree(CHROMA_PATH)
 
     if not documents:
-        print("No documents to process.")
+        logging.warning("No documents to process.")
         return
 
-    print(f"Loaded {len(documents)} document(s).")
+    logging.info(f"Loaded {len(documents)} document(s).")
 
-    print("Splitting documents into chunks...")
+    logging.info("Splitting documents into chunks...")
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=1200,
         chunk_overlap=250,
         length_function=len
     )
     chunks = text_splitter.split_documents(documents)
-    print(f"Split documents into {len(chunks)} chunks.")
+    logging.info(f"Split documents into {len(chunks)} chunks.")
 
-    print(f"Initializing Hugging Face Embeddings with model: {MODEL_NAME}...")
-    print("This may take a moment as the model needs to be downloaded on the first run.")
+    logging.info(f"Initializing Hugging Face Embeddings with model: {MODEL_NAME}...")
+    logging.info("This may take a moment as the model needs to be downloaded on the first run.")
 
-    print("Creating and persisting vector store...")
+    logging.info("Creating and persisting vector store...")
     vector_store = Chroma.from_documents(
         documents=chunks,
         embedding=EMBEDDINGS,
         persist_directory=CHROMA_PATH
     )
 
-    print(f"Vector store created successfully and saved to '{CHROMA_PATH}'.")
-    print(f"Total vectors in store: {vector_store._collection.count()}")
+    logging.info(f"Vector store created successfully and saved to '{CHROMA_PATH}'.")
+    logging.info(f"Total vectors in store: {vector_store._collection.count()}")
 
 
 if __name__ == '__main__':

@@ -2,6 +2,9 @@ import asyncio
 import aiohttp
 from bs4 import BeautifulSoup
 from langchain.schema import Document
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 async def fetch_and_create_document(session, url):
     """Fetches a single URL, parses it, and creates a Document."""
@@ -29,17 +32,17 @@ async def fetch_and_create_document(session, url):
             text = text.strip()
 
             if text:
-                print(f"Successfully scraped {url}")
+                logging.info(f"Successfully scraped {url}")
                 return Document(page_content=text, metadata={"source": url})
             else:
-                print(f"No content scraped from {url}")
+                logging.warning(f"No content scraped from {url}")
                 return None
 
     except aiohttp.ClientError as e:
-        print(f"Error fetching {url}: {e}")
+        logging.error(f"Error fetching {url}: {e}")
         return None
     except Exception as e:
-        print(f"An error occurred while processing {url}: {e}")
+        logging.error(f"An error occurred while processing {url}: {e}")
         return None
 
 async def scrape_links():
@@ -51,7 +54,7 @@ async def scrape_links():
         with open(links_file, 'r', encoding='utf-8') as f:
             urls = [line.strip() for line in f if line.strip()]
     except FileNotFoundError:
-        print(f"Error: {links_file} not found.")
+        logging.error(f"Error: {links_file} not found.")
         return []
 
     async with aiohttp.ClientSession() as session:
@@ -61,4 +64,4 @@ async def scrape_links():
 
 if __name__ == '__main__':
     documents = asyncio.run(scrape_links())
-    print(f"Scraped {len(documents)} documents.")
+    logging.info(f"Scraped {len(documents)} documents.")
