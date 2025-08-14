@@ -1,5 +1,4 @@
 import asyncio
-import shutil
 import os
 import logging
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -13,16 +12,19 @@ CHROMA_PATH = "chromadb"
 MODEL_NAME = "intfloat/multilingual-e5-large"
 EMBEDDINGS = HuggingFaceEmbeddings(model_name=MODEL_NAME)
 
-def create_vector_store(documents):
+def create_vector_store_if_not_exists():
     """
-    Creates a Chroma vector store from a list of documents.
+    Creates the vector store if it doesn't exist.
     """
-    if os.path.exists(CHROMA_PATH):
-        logging.info(f"Deleting old database at {CHROMA_PATH}")
-        shutil.rmtree(CHROMA_PATH)
+    if os.path.exists(CHROMA_PATH) and os.listdir(CHROMA_PATH):
+        logging.info("Vector store already exists. Skipping creation.")
+        return
 
+    logging.info("Vector store not found. Creating...")
+    documents = asyncio.run(scrape_links())
+    
     if not documents:
-        logging.warning("No documents to process.")
+        logging.warning("No documents scraped. Vector store not created.")
         return
 
     logging.info(f"Loaded {len(documents)} document(s).")
@@ -51,5 +53,4 @@ def create_vector_store(documents):
 
 
 if __name__ == '__main__':
-    documents = asyncio.run(scrape_links())
-    create_vector_store(documents)
+    create_vector_store_if_not_exists()

@@ -1,9 +1,16 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from pydantic import BaseModel
 from llm_logic import get_answer
+from vector_store import create_vector_store_if_not_exists
 from typing import List
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    create_vector_store_if_not_exists()
+    yield
+
+app = FastAPI(lifespan=lifespan)
 
 class Question(BaseModel):
     question: str
@@ -19,4 +26,4 @@ async def ask(question: Question):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
