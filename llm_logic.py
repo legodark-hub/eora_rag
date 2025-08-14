@@ -16,6 +16,24 @@ CHROMA_PATH = "chromadb"
 MODEL_NAME = "intfloat/multilingual-e5-large"
 EMBEDDINGS = HuggingFaceEmbeddings(model_name=MODEL_NAME)
 
+print("Initializing LLM...")
+LLM = ChatOpenAI(
+    base_url=config.LLM_BASE_URL,
+    api_key=config.LLM_API_KEY,
+    model=config.LLM_NAME,
+    temperature=0.7,
+)
+print("LLM initialized.")
+
+print("Initializing retriever...")
+VECTOR_STORE = Chroma(
+    persist_directory=CHROMA_PATH,
+    embedding_function=EMBEDDINGS
+)
+RETRIEVER = VECTOR_STORE.as_retriever(search_kwargs={"k": 4})
+print("Retriever initialized.")
+
+
 class GraphState(TypedDict):
     """
     Represents the state of our graph.
@@ -31,30 +49,6 @@ class GraphState(TypedDict):
     documents: List[Document]
     sources: List[str]
 
-def get_llm():
-    """
-    Initializes and returns the LLM.
-    """
-    llm = ChatOpenAI(
-        base_url=config.LLM_BASE_URL,
-        api_key=config.LLM_API_KEY,
-        model=config.LLM_NAME,
-        temperature=0.7,
-    )
-    return llm
-
-def get_retriever():
-    """
-    Initializes and returns a Chroma vector store retriever.
-    """
-    print("Loading vector store...")
-    vector_store = Chroma(
-        persist_directory=CHROMA_PATH,
-        embedding_function=EMBEDDINGS
-    )
-    print("Vector store loaded.")
-    return vector_store.as_retriever(search_kwargs={"k": 4})
-
 async def retrieve(state):
     """
     Retrieve documents
@@ -67,8 +61,7 @@ async def retrieve(state):
     """
     print("---RETRIEVE---")
     question = state["question"]
-    retriever = get_retriever()
-    documents = await retriever.ainvoke(question)
+    documents = await RETRIEVER.ainvoke(question)
     sources = [doc.metadata['source'] for doc in documents]
     return {"documents": documents, "question": question, "sources": sources}
 
@@ -86,7 +79,6 @@ async def generate(state):
     question = state["question"]
     documents = state["documents"]
     sources = state["sources"]
-    llm = get_llm()
 
     prompt = PromptTemplate(
         template="""Вы — ассистент компании EORA. Ваша задача — отвечать на вопросы о выполненных проектах компании.
@@ -112,7 +104,7 @@ async def generate(state):
     sources_text = "\n".join([f"[{i+1}]: {source}" for i, source in enumerate(sources)])
 
 
-    rag_chain = prompt | llm | StrOutputParser()
+    rag_chain = prompt | LLM | StrOutputParser()
     generation = await rag_chain.ainvoke({"context": context, "question": question, "sources": sources_text})
     return {"documents": documents, "question": question, "generation": generation, "sources": sources}
 
