@@ -23,9 +23,20 @@ async def fetch_and_save(session, url, output_dir):
             
             article_content = soup.find('article')
             if article_content:
-                text = article_content.get_text(separator='\n', strip=True)
+                text = article_content.get_text(separator=' ', strip=True)
             else:
-                text = soup.get_text(separator='\n', strip=True)
+                text = soup.get_text(separator=' ', strip=True)
+
+            # Clean the text
+            header_marker = "Главная / Портфолио /"
+            if header_marker in text:
+                text = text.split(header_marker, 1)[1]
+
+            footer_marker = '[{"lid"'
+            if footer_marker in text:
+                text = text.split(footer_marker, 1)[0]
+
+            text = text.strip()
 
             filename = get_filename_from_url(url)
             if filename:
