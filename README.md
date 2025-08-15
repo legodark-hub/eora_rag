@@ -16,8 +16,8 @@
 **1.1 Клонируйте репозиторий** (если вы этого еще не сделали):
     
 ```bash
-git clone <repository-url>
-cd <repository-directory>
+git clone https://github.com/legodark-hub/eora_rag.git
+cd eora_rag
 ```
 
 **1.2 Настройте переменные окружения:**
