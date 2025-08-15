@@ -1,5 +1,4 @@
 import asyncio
-import os
 import logging
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -12,16 +11,18 @@ CHROMA_PATH = "chromadb"
 MODEL_NAME = "intfloat/multilingual-e5-large"
 EMBEDDINGS = HuggingFaceEmbeddings(model_name=MODEL_NAME)
 
-def create_vector_store_if_not_exists():
+async def create_vector_store_if_not_exists():
     """
-    Creates the vector store if it doesn't exist.
+    Creates the vector store if it doesn't exist or is empty.
     """
-    if os.path.exists(CHROMA_PATH) and os.listdir(CHROMA_PATH):
-        logging.info("Vector store already exists. Skipping creation.")
+    vector_store = Chroma(persist_directory=CHROMA_PATH, embedding_function=EMBEDDINGS)
+    
+    if vector_store._collection.count() > 0:
+        logging.info("Vector store already exists and is not empty. Skipping creation.")
         return
 
-    logging.info("Vector store not found. Creating...")
-    documents = asyncio.run(scrape_links())
+    logging.info("Vector store not found or is empty. Creating...")
+    documents = await scrape_links()
     
     if not documents:
         logging.warning("No documents scraped. Vector store not created.")
@@ -42,15 +43,16 @@ def create_vector_store_if_not_exists():
     logging.info("This may take a moment as the model needs to be downloaded on the first run.")
 
     logging.info("Creating and persisting vector store...")
-    vector_store = Chroma.from_documents(
+    new_vector_store = await asyncio.to_thread(
+        Chroma.from_documents,
         documents=chunks,
         embedding=EMBEDDINGS,
         persist_directory=CHROMA_PATH
     )
 
     logging.info(f"Vector store created successfully and saved to '{CHROMA_PATH}'.")
-    logging.info(f"Total vectors in store: {vector_store._collection.count()}")
+    logging.info(f"Total vectors in store: {new_vector_store._collection.count()}")
 
 
 if __name__ == '__main__':
-    create_vector_store_if_not_exists()
+    asyncio.run(create_vector_store_if_not_exists())

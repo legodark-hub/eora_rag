@@ -7,7 +7,7 @@ from typing import List
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    create_vector_store_if_not_exists()
+    await create_vector_store_if_not_exists()
     yield
 
 app = FastAPI(lifespan=lifespan)
