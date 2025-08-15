@@ -4,13 +4,10 @@ langchain
 langgraph
 chromadb
 beautifulsoup4
-requests
 sentence-transformers
 pydantic
 aiohttp
-aiofiles
 langchain-chroma
 langchain-huggingface
-unstructured
 langchain-openai
 python-dotenv
